@@ -1,20 +1,32 @@
+<<<<<<< HEAD
 // Plugins
+=======
+>>>>>>> master
 import Components from 'unplugin-vue-components/vite'
 import Vue from '@vitejs/plugin-vue'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import ViteFonts from 'unplugin-fonts/vite'
 
+<<<<<<< HEAD
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
+=======
+import { defineConfig } from 'vite'
+import { fileURLToPath, URL } from 'node:url'
+
+>>>>>>> master
 export default defineConfig({
   plugins: [
     Vue({
       template: { transformAssetUrls }
     }),
+<<<<<<< HEAD
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
+=======
+>>>>>>> master
     Vuetify(),
     Components(),
     ViteFonts({

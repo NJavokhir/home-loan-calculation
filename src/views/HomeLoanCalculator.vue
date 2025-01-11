@@ -9,7 +9,7 @@
         </v-app-bar>
 
         <v-container>
-            <v-tabs v-model="activeTab" align-tabs="center mt-16 mb-6" style="content: none;">
+            <v-tabs v-model="activeTab" align-tabs="center" class="mt-16 mb-6">
                 <v-tab>Mortgage</v-tab>
                 <v-tab>EPF Withdrawal</v-tab>
                 <v-tab>Legal Fee</v-tab>
@@ -46,12 +46,10 @@ const goBack = () => {
 </script>
 
 <style scoped>
-
 .v-tab {
     font-weight: 500;
     border-radius: 20px !important;
     padding: 4px 8px !important;
-    transition: background-color 0.3s ease;
     margin-right: 8px;
     background-color: #F4F4F7;
     text-transform: none;
@@ -62,19 +60,9 @@ const goBack = () => {
     --v-tabs-height: 30px;
 }
 
-.v-btn::after {
-    display: none !important;
-}
-
 .v-tab--selected {
     background-color: #E5F8F7 !important;
     color: #00B5B0;
     border: none;
-}
-
-[class^="v-"]::before,
-[class^="v-"]::after {
-    content: none !important;
-    display: none !important;
 }
 </style>
