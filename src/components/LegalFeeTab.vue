@@ -139,10 +139,6 @@ const formattedLegalFee = computed(() => {
   font-weight: 300;
 }
 
-.calculate-btn {
-  margin-top: 12px;
-}
-
 .buying-house {
   width: 100%;
   border: 1px solid #DBDEEB;
