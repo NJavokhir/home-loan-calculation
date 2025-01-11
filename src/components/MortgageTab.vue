@@ -1,45 +1,52 @@
 <template>
   <v-card class="mortgage-card">
     <div class="mortgage">
+      <!-- Mortgage Breakdown Section -->
       <div class="mortgage-breakdown">
-        <div class="text-subtitle-1 font-weight-medium mb-2">
+        <div class="mortgage-breakdown-title">
           Mortgage Breakdown
         </div>
-        <div class="d-flex justify-space-between align-center w-full mb-2">
-          <p class="text-caption font-weight-medium">Est. Monthly Repayment</p>
-          <p class="text-caption font-weight-medium">{{ monthlyPayment }} RM</p>
+        <!-- Monthly Repayment Display -->
+        <div class="payment-container">
+          <p class="text-caption">Est. Monthly Repayment</p>
+          <p class="text-caption">{{ monthlyPayment }} RM</p>
         </div>
-        <div class="d-flex text-center text-white mb-2">
-          <div :style="{ width: principalPercentage + '%' }" class="dynamic-left-bar">
+        <!-- Progress Bars for Principal and Interest -->
+        <div class="progress-container">
+          <div :style="{ width: principalPercentage + '%' }" class="dynamic-left-bar dynamic-bar">
             {{ principalPercentage }}%
           </div>
-          <div style="border-top-right-radius: 28px; border-bottom-right-radius: 28px; background-color: #3F8F93;"
-            :style="{ width: interestPercentage + '%' }" class="dynamic-right-bar">
+          <div class="dynamic-right-bar dynamic-bar" :style="{ width: interestPercentage + '%' }">
             {{ interestPercentage }}%
           </div>
         </div>
+        <!-- Breakdown details for Principal and Interest Amount -->
         <div class="breakdown-details">
           <span class="breakdown-principal">RM {{ principalAmount }} Principal</span>
           <span class="breakdown-interest">RM {{ interestAmount }} Interest</span>
         </div>
       </div>
-      <div class="upfront-costs">
-        <div class="text-subtitle-1 font-weight-medium mb-2">
+
+      <!-- Upfront Costs Section -->
+      <div>
+        <div class="mortgage-breakdown-title">
           Upfront Costs
         </div>
-        <div class="d-flex justify-space-between align-center w-full mb-2">
-          <p class="text-caption font-weight-medium">Total Downpayment</p>
-          <p class="text-caption font-weight-medium">{{ downPayment }} RM</p>
+        <!-- Total Downpayment Display -->
+        <div class="payment-container">
+          <p class="text-caption">Total Downpayment</p>
+          <p class="text-caption">{{ downPayment }} RM</p>
         </div>
-        <div class="d-flex text-center text-white mb-2">
-          <div :style="{ width: downpaymentPercentage + '%' }" class="dynamic-left-bar">
+        <!-- Progress Bars for Downpayment and Loan Amount -->
+        <div class="progress-container">
+          <div class="dynamic-left-bar dynamic-bar" :style="{ width: downpaymentPercentage + '%' }">
             {{ downpaymentPercentage }}%
           </div>
-          <div style="border-top-right-radius: 28px; border-bottom-right-radius: 28px; background-color: #3F8F93;"
-            :style="{ width: loanPercentage + '%' }" class="dynamic-right-bar">
+          <div class="dynamic-right-bar dynamic-bar" :style="{ width: loanPercentage + '%' }">
             {{ loanPercentage }}%
           </div>
         </div>
+        <!-- Breakdown details for Downpayment and Loan Amount -->
         <div class="breakdown-details">
           <span class="breakdown-principal">RM {{ downPayment }} Downpayment</span>
           <span class="breakdown-interest">RM {{ interestAmount }} Loan amount</span>
@@ -47,6 +54,7 @@
       </div>
     </div>
 
+    <!-- Calculator Section -->
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
@@ -94,6 +102,7 @@
 
     <v-btn @click="calculateMortgage" class="calculate-btn">Calculate</v-btn>
 
+    <!-- Display Result if Monthly Payment is Calculated -->
     <div v-if="monthlyPayment !== null">
       <h4 class="font-weight-medium text-left mb-4">Result</h4>
       <div class="d-flex justify-space-between align-center w-full rounded-lg py-4 px-4 bg-white mb-4">
@@ -108,44 +117,54 @@
 <script setup>
 import { ref, watch, computed } from "vue";
 
+// Define reactive variables
 const propertyPrice = ref('');
 const downPayment = ref('');
 const downPaymentType = ref("RM");
 const interestRate = ref('');
 const loanTenure = ref('');
 const monthlyPayment = ref(null);
+const interestPercentage = ref(50);
+const principalPercentage = ref(50);
 
-watch([propertyPrice, downPaymentType], () => {
-  if (downPaymentType.value === "RM") {
-    downPayment.value = (propertyPrice.value * downPayment.value) / 100;
-  } else if (downPaymentType.value === "%") {
-    downPayment.value = propertyPrice.value > 0 ? (downPayment.value / propertyPrice.value) * 100 : 0;
-  }
-});
-
+// Toggle downpayment type between 'RM' and '%'
 const toggleDownPaymentType = (type) => {
   downPaymentType.value = type;
 };
 
+// Function to calculate the mortgage
 const calculateMortgage = () => {
+  if (!propertyPrice.value || !interestRate.value || !loanTenure.value) {
+    monthlyPayment.value = null;
+    alert("Please fill all the fields correctly.");
+    return;
+  }
+
   const loanAmount = propertyPrice.value - downPayment.value;
   const annualInterestRate = interestRate.value / 100;
   const monthlyInterestRate = annualInterestRate / 12;
   const totalPayments = loanTenure.value * 12;
 
   if (loanAmount > 0 && monthlyInterestRate > 0 && totalPayments > 0) {
-    const mortgagePayment = loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments)) / (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
+    const mortgagePayment =
+      (loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments))) /
+      (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
     monthlyPayment.value = mortgagePayment.toFixed(2);
+
+    // Calculate principal and interest percentages
+    const totalAmount = mortgagePayment * totalPayments;
+    principalPercentage.value = ((loanAmount / totalAmount) * 100).toFixed(2);
+    interestPercentage.value = (100 - principalPercentage.value).toFixed(2);
   } else {
     monthlyPayment.value = null;
   }
 };
 
-const principalPercentage = ref(43);
-const interestPercentage = ref(57);
+// Static percentages for downpayment and loan
 const downpaymentPercentage = ref(74);
 const loanPercentage = ref(26);
 
+// Computed properties for interest and principal amounts
 const interestAmount = computed(() => {
   const monthlyInterestRate = interestRate.value / 100 / 12;
   const interest = monthlyPayment.value * monthlyInterestRate;
@@ -166,19 +185,49 @@ const principalAmount = computed(() => {
   background-color: #FAFBFB;
 }
 
+.mortgage {
+  padding: 12px;
+  background-color: white;
+  border: 1px solid #EDEDF3;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+}
 
-.calculate-btn {
-  width: 100%;
-  height: 52px;
-  background-color: #00B5B0;
-  color: #F9F8F8;
-  text-align: center;
-  padding: 14px 16px;
+.mortgage-breakdown {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #EDEDF3;
+}
+
+.mortgage-breakdown-title {
   font-size: 16px;
   font-weight: 500;
-  line-height: 24px;
-  text-transform: none;
-  margin-bottom: 24px;
+  margin-bottom: 0.5rem;
+}
+
+.payment-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.text-caption {
+  font-size: 12px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.progress-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: white;
 }
 
 .purpose-radio {
@@ -274,45 +323,23 @@ const principalAmount = computed(() => {
   font-weight: 400;
 }
 
-.mortgage {
-  padding: 12px;
-  background-color: white;
-  border: 1px solid #EDEDF3;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-}
-
-.mortgage-breakdown {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #EDEDF3;
-}
-
-.text-caption {
-  font-size: 12px;
-  line-height: 22px;
+.dynamic-bar {
+  height: 20px;
+  font-size: 10px;
   font-weight: 500;
+  align-content: center;
 }
 
 .dynamic-left-bar {
-  height: 20px;
   border-top-left-radius: 28px;
   border-bottom-left-radius: 28px;
   background-color: #184041;
-  font-size: 10px;
-  font-weight: 500;
-  align-content: center;
 }
 
 .dynamic-right-bar {
-  height: 20px;
   border-top-right-radius: 28px;
   border-bottom-right-radius: 28px;
-  background-color: #184041;
-  font-size: 10px;
-  font-weight: 500;
-  align-content: center;
+  background-color: #3F8F93;
 }
 
 .breakdown-details {
@@ -353,5 +380,19 @@ const principalAmount = computed(() => {
   top: 4px;
   left: 0;
   margin-left: -10px;
+}
+
+.calculate-btn {
+  width: 100%;
+  height: 52px;
+  background-color: #00B5B0;
+  color: #F9F8F8;
+  text-align: center;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-transform: none;
+  margin-bottom: 24px;
 }
 </style>

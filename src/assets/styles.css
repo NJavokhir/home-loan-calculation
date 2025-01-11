@@ -3,6 +3,9 @@
 body,
 html {
     font-family: 'Inter', sans-serif !important;
+    margin: 0;
+    padding: 0;
+    height: 100%;
 }
 
 [class^="v-"]::before,
@@ -16,9 +19,6 @@ html {
     opacity: 0 !important;
 }
 
-body {
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    padding: 0;
-    height: 100%;
+.v-btn.v-btn--density-default {
+    height: 100% !important;
 }
