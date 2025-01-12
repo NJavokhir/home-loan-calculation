@@ -9,7 +9,7 @@
         <!-- Monthly Repayment Display -->
         <div class="payment-container">
           <p class="text-caption">Est. Monthly Repayment</p>
-          <p class="text-caption">{{ monthlyPayment }} RM</p>
+          <p class="text-caption">RM <strong>{{ monthlyPayment }}</strong> / mo</p>
         </div>
         <!-- Progress Bars for Principal and Interest -->
         <div class="progress-container">
@@ -58,12 +58,16 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="propertyPrice" type="number" class="input-field" hide-details placeholder="Property Price">
+      <v-text-field       v-model="maskedPrice"
+    type="text"
+    class="input-field"
+    hide-details
+    placeholder="Property Price"
+    @input="handleInput">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
-
 
       <v-label class="custom-label">Downpayment</v-label>
       <v-text-field v-model="downPayment" type="number" class="input-field" hide-details placeholder="Downpayment">
@@ -77,7 +81,7 @@
             </span>
           </div>
         </template>
-      </v-text-field>
+      </v-text-field>{{ formattedPrice }}
 
       <v-row>
         <v-col cols="6">
@@ -115,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, computed } from "vue";
 
 // Define reactive variables
 const propertyPrice = ref('');
@@ -132,8 +136,47 @@ const toggleDownPaymentType = (type) => {
   downPaymentType.value = type;
 };
 
+// Masked price model (formatted for display)
+const maskedPrice = ref('');
+
+// Function to format the input as currency manually
+const formatCurrency = (value) => {
+  // Remove all non-numeric characters except for the decimal point
+  let rawValue = value.replace(/[^\d.-]/g, '');
+
+  // Separate the decimal part (if any)
+  let [integerPart, decimalPart] = rawValue.split('.');
+  
+  // Add commas to the integer part
+  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  // Limit the decimal part to 2 digits
+  if (decimalPart) {
+    decimalPart = decimalPart.substring(0, 2);
+  }
+
+  // Combine the integer part and the decimal part (if any)
+  return decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
+};
+
+// Function to handle input and update both masked and actual value
+const handleInput = (event) => {
+  // Remove all non-numeric characters except for the decimal point
+  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+  
+  // Update the actual propertyPrice value (remove non-numeric characters for raw number)
+  propertyPrice.value = parseFloat(rawValue.replace(/[^0-9.-]/g, '')) || 0;
+
+  // Update the masked value for display
+  maskedPrice.value = formatCurrency(rawValue);
+};
 // Function to calculate the mortgage
 const calculateMortgage = () => {
+  console.log(propertyPrice.value)
+  console.log(interestRate.value)
+  console.log(loanTenure.value)
+  console.log(monthlyPayment.value)
+
   if (!propertyPrice.value || !interestRate.value || !loanTenure.value) {
     monthlyPayment.value = null;
     alert("Please fill all the fields correctly.");
@@ -149,7 +192,7 @@ const calculateMortgage = () => {
     const mortgagePayment =
       (loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments))) /
       (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
-    monthlyPayment.value = mortgagePayment.toFixed(2);
+    monthlyPayment.value = mortgagePayment.toFixed(3);
 
     // Calculate principal and interest percentages
     const totalAmount = mortgagePayment * totalPayments;

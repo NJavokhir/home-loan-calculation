@@ -9,7 +9,7 @@
         </v-app-bar>
 
         <v-container>
-            <v-tabs hide-slider="true" v-model="activeTab" align-tabs="center" class="mt-16 mb-6">
+            <v-tabs v-model="activeTab" hide-slider align-tabs="center" class="mt-16 mb-6">
                 <v-tab>Mortgage</v-tab>
                 <v-tab>EPF Withdrawal</v-tab>
                 <v-tab>Legal Fee</v-tab>
