@@ -167,7 +167,7 @@ const calculateLegalFee = () => {
   }
 
   // Loan Stamp Duty Calculation (0.5% of the loan amount)
-  loanAmount = loanAmountActualType.value === "%" ? price * (1 - parseFloat(loanAmountActual.value) / 100) : parseFloat(loanAmountActual.value);
+  loanAmount = loanAmountActualType.value === "%" ? price - price * (1 - parseFloat(loanAmountActual.value) / 100) : parseFloat(loanAmountActual.value);
   loanStampDutyAmount = loanAmount * 0.005; // 0.5% stamp duty for the loan
 
   // Loan Legal Fee Calculation (same tiered structure as legal fee)
