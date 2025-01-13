@@ -134,6 +134,16 @@ const toggleLoanAmountType = (type) => {
 
 // Function to calculate the legal fee based on the property price
 const calculateLegalFee = () => {
+
+  if (!propertyPrice.value || !loanAmountActual.value) {
+    legalFee.value = null;
+    stampDutySPA.value = null;
+    loanLegalFee.value = null;
+    loanStampDuty.value = null;
+    alert("Please fill all the fields correctly.");
+    return;
+  }
+
   const price = parseFloat(propertyPrice.value) || 0;
 
   let fee = 0;
