@@ -37,7 +37,7 @@
         <!-- Total Downpayment Display -->
         <div class="payment-container">
           <p class="text-caption">Total Downpayment</p>
-          <p class="text-caption">RM <strong>{{ downPayment.toLocaleString() }}</strong></p>
+          <p class="text-caption">RM <strong>{{ totalDownPayment.toLocaleString() }}</strong></p>
         </div>
         <!-- Progress Bars for Downpayment and Loan Amount -->
         <div class="progress-container">
@@ -71,10 +71,17 @@
       </v-text-field>
 
       <v-label class="custom-label">Downpayment</v-label>
-      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details hide-spin-buttons
-        placeholder="Downpayment" @input="handleInput('loan', $event)">
+      <v-text-field v-model="maskedDown" type="text" class="input-field" hide-details hide-spin-buttons
+        placeholder="Downpayment" @input="handleInput('down', $event)">
         <template #prepend-inner>
-          <span class="prepend-text">RM</span>
+          <div class="prepend-class">
+            <span :class="{ active: downPaymentType === '%' }" @click="toggleDownPaymentType('%')">
+              %
+            </span>
+            <span :class="{ active: downPaymentType === 'RM' }" @click="toggleDownPaymentType('RM')">
+              RM
+            </span>
+          </div>
         </template>
       </v-text-field>
 
@@ -126,21 +133,44 @@ const loanTenure = ref('');
 const monthlyPayment = ref(null);
 
 const downPayment = ref(0);
+const downPaymentType = ref('%');
 const downpaymentPercentage = ref(0);
 const loanPercentage = ref(0);
 const interestPercentage = ref(0);
 const principalPercentage = ref(0);
+const totalDownPayment = ref(0);
 
 const maskedPrice = ref('');
-const maskedLoan = ref('');
+const maskedDown = ref('');
 
-// Watch for changes in interestRate when interestRate is higher than '100'
-watch(() => interestRate.value, (newInterestRate) => {
-  if (newInterestRate > 100) {
-    alert('The interest rate cannot exceed 100%. Please enter a valid interest rate.');
-    interestRate.value = '';
+watch(
+  [() => downPayment.value, () => downPaymentType.value, () => propertyPrice.value],
+  ([newDownPayment, newDownPaymentType, newPropertyPrice]) => {
+    if (newDownPaymentType === '%') {
+      // Ensure the percentage value is within the valid range
+      if (newDownPayment > 100) {
+        alert('The down payment percentage cannot exceed 100%. Please enter a valid percentage.');
+        downPayment.value = '';
+        maskedDown.value = '';
+        return;
+      }
+
+      // Automatically calculate the down payment in RM when percentage is entered
+      const calculatedDownPayment = (newPropertyPrice * newDownPayment) / 100;
+      loanAmount.value = newPropertyPrice - calculatedDownPayment;
+    } else if (newDownPaymentType === 'RM') {
+      // When the down payment is in RM, directly calculate the loan amount
+      loanAmount.value = newPropertyPrice - newDownPayment;
+    }
+
+    // Ensure the down payment or loan amount does not go below 0
+    if (loanAmount.value < 0) {
+      alert('Down payment cannot exceed the property price.');
+      loanAmount.value = '';
+      downPayment.value = '';
+    }
   }
-});
+);
 
 // Function to handle input and update both masked and actual value
 const handleInput = (field, event) => {
@@ -153,9 +183,9 @@ const handleInput = (field, event) => {
   if (field === 'price') {
     propertyPrice.value = parseInt(rawValue, 10) || 0;
     maskedPrice.value = formatCurrency(rawValue);
-  } else if (field === 'loan') {
-    loanAmount.value = parseInt(rawValue, 10) || 0;
-    maskedLoan.value = formatCurrency(rawValue);
+  } else if (field === 'down') {
+    downPayment.value = parseInt(rawValue, 10) || 0;
+    maskedDown.value = formatCurrency(rawValue);
   } else if (field === 'interest') {
     interestRate.value = rawValue;
   } else if (field === 'tenure') {
@@ -163,26 +193,50 @@ const handleInput = (field, event) => {
   }
 };
 
-// Function to calculate the mortgage
+
 const calculateMortgage = () => {
-  if (!propertyPrice.value || !interestRate.value || !loanTenure.value || !loanAmount.value) {
+  if (!propertyPrice.value || !interestRate.value || !loanTenure.value || !downPayment.value || !downPaymentType.value) {
     monthlyPayment.value = null;
     alert("Please fill all the fields correctly.");
     return;
   }
 
-  const loanAmountActual = loanAmount.value;
+  let downPaymentAmount;
+
+  // Handle down payment based on type
+  if (downPaymentType.value === "%") {
+    // Down payment as a percentage of the property price
+    if (downPayment.value < 0 || downPayment.value > 100) {
+      alert("Down payment percentage must be between 0 and 100.");
+      return;
+    }
+    downPaymentAmount = (propertyPrice.value * downPayment.value) / 100;
+  } else if (downPaymentType.value === "RM") {
+    // Down payment as an absolute value
+    if (downPayment.value < 0 || downPayment.value > propertyPrice.value) {
+      alert("Down payment amount must be a positive value and less than or equal to the property price.");
+      return;
+    }
+    downPaymentAmount = downPayment.value;
+  } else {
+    alert("Invalid down payment type. Please select '%' or 'RM'.");
+    return;
+  }
+
+  // Calculate loan amount based on down payment
+  const loanAmountActual = propertyPrice.value - downPaymentAmount;
   const annualInterestRate = interestRate.value / 100;
   const monthlyInterestRate = annualInterestRate / 12;
   const totalPayments = loanTenure.value * 12;
 
-  // Validate positive values
+  // Validate positive values for loan amount, interest rate, and tenure
   if (loanAmountActual <= 0 || annualInterestRate < 0 || totalPayments <= 0) {
     monthlyPayment.value = null;
     alert("Please enter valid positive values.");
     return;
   }
 
+  // Handle zero interest rate case
   if (monthlyInterestRate === 0) {
     monthlyPayment.value = (loanAmountActual / totalPayments).toFixed(2);
     principalPercentage.value = "100.00";
@@ -190,22 +244,31 @@ const calculateMortgage = () => {
     return;
   }
 
+  // Calculate monthly mortgage payment
   const mortgagePayment =
     (loanAmountActual * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments))) /
     (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
 
   monthlyPayment.value = parseFloat(mortgagePayment.toFixed(2));
 
+  // Calculate total amounts
   const totalAmountPaid = mortgagePayment * totalPayments;
-
   const totalInterestPaid = totalAmountPaid - loanAmountActual;
 
+  // Calculate percentages
   principalPercentage.value = ((loanAmountActual / totalAmountPaid) * 100).toFixed(0); // Principal paid as a percentage of total payments
   interestPercentage.value = ((totalInterestPaid / totalAmountPaid) * 100).toFixed(0); // Interest paid as a percentage of total payments
+  downpaymentPercentage.value = ((downPaymentAmount / propertyPrice.value) * 100).toFixed(0); // Down payment as a percentage of property price
+  loanPercentage.value = ((loanAmountActual / propertyPrice.value) * 100).toFixed(0); // Loan amount as a percentage of property price
+  totalDownPayment.value = Number(downPaymentAmount).toLocaleString();
+  loanAmount.value = Number(loanAmountActual).toLocaleString();
 
-  downPayment.value = propertyPrice.value - loanAmount.value;
-  downpaymentPercentage.value = ((downPayment.value / propertyPrice.value) * 100).toFixed(0);
-  loanPercentage.value = ((loanAmount.value / propertyPrice.value) * 100).toFixed(0);
+};
+
+const toggleDownPaymentType = (type) => {
+  downPaymentType.value = type;
+  downPayment.value = ''
+  maskedDown.value = ''
 };
 
 // Computed properties for interest and principal amounts
