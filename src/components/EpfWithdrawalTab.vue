@@ -32,23 +32,31 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="propertyPrice" type="number" class="input-field" hide-details placeholder="Property Price">
+      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
+        @input="handleInput('price', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
-
       <v-label class="custom-label">Loan Amount</v-label>
-      <v-text-field v-model="loanAmount" type="number" class="input-field" hide-details placeholder="Loan Amount">
+      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
+        @input="handleInput('loan', $event)">
         <template #prepend-inner>
-          <span class="prepend-text">RM</span>
+          <div class="prepend-class">
+            <span :class="{ active: loanAmountType === '%' }" @click="toggleDownPaymentType('%')">
+              %
+            </span>
+            <span :class="{ active: loanAmountType === 'RM' }" @click="toggleDownPaymentType('RM')">
+              RM
+            </span>
+          </div>
         </template>
       </v-text-field>
 
       <v-label class="custom-label">Balance in Account II</v-label>
-      <v-text-field v-model="balanceAccount" type="number" class="input-field" hide-details
-        placeholder="Balance in Account II">
+      <v-text-field v-model="maskedBalance" type="text" class="input-field" hide-details
+        placeholder="Balance in Account II" @input="handleInput('balance', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
@@ -58,54 +66,98 @@
     <v-btn @click="calculateLoanToValue" class="calculate-btn">Calculate</v-btn>
 
     <!-- Display result after calculation -->
-    <div v-if="ltvResult">
+    <div v-if="fundCanBeWithdrawn">
       <h4 class="font-weight-medium text-left mb-4">Result</h4>
       <div class="d-flex justify-space-between align-center w-full rounded-lg py-4 px-4 bg-white mb-4"
-        v-if="ltvResult !== null">
-        <p class="text-caption">Fund can be withdraw rate (%): </p>
-        <strong>{{ ltvResult }}%</strong>
+        v-if="fundCanBeWithdrawn !== null">
+        <p class="text-caption">Fund can be withdraw (RM): </p>
+        <strong>{{ fundCanBeWithdrawn }}</strong>
       </div>
     </div>
   </v-card>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { formatCurrency } from "@/utils/currencyUtils";
 
-// Defining reactive state variables for user inputs and result
+// Defining reactive state variables for user inputs and results
 const propertyPrice = ref('');
 const loanAmount = ref('');
 const balanceAccount = ref('');
-const withdrawalPurpose = ref('purchase');
-const ltvResult = ref(null);
-const remainingBalance = ref(null);
 
-// Function to calculate the Loan-To-Value (LTV) based on the selected purpose
+const withdrawalPurpose = ref('purchase');
+const fundCanBeWithdrawn = ref(null);
+const loanAmountType = ref('%');
+
+const maskedPrice = ref('');
+const maskedLoan = ref('');
+const maskedBalance = ref('');
+
+// Watch for changes in loanAmount when loanAmountType is '%'
+watch(() => loanAmount.value, (newLoanAmount) => {
+  if (loanAmountType.value === '%' && newLoanAmount > 100) {
+    alert('The loan amount cannot exceed 100%. Please enter a valid loan amount.');
+    loanAmount.value = '';
+    maskedLoan.value = '';
+  }
+});
+
+// Function to handle input and update both masked and actual value
+const handleInput = (field, event) => {
+  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+
+  if (field === 'price') {
+    propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedPrice.value = formatCurrency(rawValue);
+  } else if (field === 'loan') {
+    loanAmount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedLoan.value = formatCurrency(rawValue);
+  } else if (field === 'balance') {
+    balanceAccount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedBalance.value = formatCurrency(rawValue);
+  }
+};
+
+// Function to toggle loan amount type (percentage or RM)
+const toggleDownPaymentType = (type) => {
+  loanAmountType.value = type;
+  loanAmount.value = ''
+  maskedLoan.value = ''
+};
+
+// Function to calculate the maximum fund that can be withdrawn
 const calculateLoanToValue = () => {
-  if (!propertyPrice.value || !loanAmount.value || !balanceAccount.value) {
-    alert("Please fill all the fields correctly.");
+  const price = parseFloat(propertyPrice.value) || 0;
+  const loan = parseFloat(loanAmount.value) || 0;
+  const balance = parseFloat(balanceAccount.value) || 0;
+
+  if (price <= 0 || loan <= 0 || balance <= 0) {
+    alert('Please fill all the fields with valid values.');
+    fundCanBeWithdrawn.value = null;
     return;
   }
 
-  const price = parseFloat(propertyPrice.value);
-  const loan = parseFloat(loanAmount.value);
-  const balance = parseFloat(balanceAccount.value);
-
-  let result = null;
+  let fund = 0;
 
   if (withdrawalPurpose.value === 'purchase') {
-    result = (loan / price) * 100;
+    // Loan amount in RM (can be % or fixed amount)
+    const loanInRM = loanAmountType.value === '%' ? (loan / 100) * price : loan;
+
+    // Calculate the maximum eligible withdrawal amount
+    const eligibleWithdrawal = (price - loanInRM) + (0.1 * price);
+
+    // The actual amount withdrawable is the lower of Account II balance or the eligible withdrawal amount
+    fund = Math.min(eligibleWithdrawal, balance);
   } else if (withdrawalPurpose.value === 'redeem') {
-    result = ((loan + balance) / price) * 100;
+    // For redeem, withdrawal is limited to the lower of Outstanding Loan Balance or Account II Balance
+    const loanInRM = loanAmountType.value === '%' ? (loan / 100) * price : loan;
+
+    fund = Math.min(loanInRM, balance);
   }
 
-  if (result !== null) {
-    ltvResult.value = result.toFixed(2);
-  } else {
-    ltvResult.value = null;
-  }
-
-  remainingBalance.value = balance.toFixed(2);
+  // Update the reactive variable for the result
+  fundCanBeWithdrawn.value = fund.toLocaleString();
 };
 </script>
 
@@ -173,14 +225,34 @@ const calculateLoanToValue = () => {
   line-height: 18px;
 }
 
-.prepend-text {
-  color: #6B6F89;
+.prepend-text,
+.prepend-class span {
+  width: 100%;
+  color: #6b6f89;
   font-weight: 400;
-  margin-right: 8px;
+  margin-right: 0px;
   font-size: 14px;
   line-height: 16px;
-  word-wrap: break-word;
-  position: relative;
+  cursor: pointer;
+  justify-content: center;
+  text-align: center;
+}
+
+.prepend-class span.active {
+  color: #00b5b0;
+  font-weight: 600;
+  padding: 4px;
+  background-color: white;
+  border-radius: 8px;
+}
+
+.prepend-class {
+  width: 64px;
+  display: flex;
+  padding: 2px;
+  background-color: #F1F2F8;
+  border-radius: 8px;
+  align-items: center;
 }
 
 .prepend-text::after {

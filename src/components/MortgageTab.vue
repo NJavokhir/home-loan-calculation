@@ -9,14 +9,14 @@
         <!-- Monthly Repayment Display -->
         <div class="payment-container">
           <p class="text-caption">Est. Monthly Repayment</p>
-          <p class="text-caption">{{ monthlyPayment }} RM</p>
+          <p class="text-caption">RM <strong>{{ monthlyPayment }}</strong> / mo</p>
         </div>
         <!-- Progress Bars for Principal and Interest -->
         <div class="progress-container">
-          <div :style="{ width: principalPercentage + '%' }" class="dynamic-left-bar dynamic-bar">
+          <div :style="{ width: (principalPercentage === 0 ? 50 : principalPercentage) + '%' }" class="dynamic-left-bar dynamic-bar">
             {{ principalPercentage }}%
           </div>
-          <div class="dynamic-right-bar dynamic-bar" :style="{ width: interestPercentage + '%' }">
+          <div class="dynamic-right-bar dynamic-bar" :style="{ width: (interestPercentage === 0 ? 50 : interestPercentage) + '%' }">
             {{ interestPercentage }}%
           </div>
         </div>
@@ -35,21 +35,21 @@
         <!-- Total Downpayment Display -->
         <div class="payment-container">
           <p class="text-caption">Total Downpayment</p>
-          <p class="text-caption">{{ downPayment }} RM</p>
+          <p class="text-caption">RM <strong>{{ downPayment.toLocaleString() }}</strong></p>
         </div>
         <!-- Progress Bars for Downpayment and Loan Amount -->
         <div class="progress-container">
-          <div class="dynamic-left-bar dynamic-bar" :style="{ width: downpaymentPercentage + '%' }">
+          <div class="dynamic-left-bar dynamic-bar" :style="{ width: (downpaymentPercentage === 0 ? 50 : downpaymentPercentage) + '%' }">
             {{ downpaymentPercentage }}%
           </div>
-          <div class="dynamic-right-bar dynamic-bar" :style="{ width: loanPercentage + '%' }">
+          <div class="dynamic-right-bar dynamic-bar" :style="{ width: (loanPercentage === 0 ? 50 : loanPercentage) + '%' }">
             {{ loanPercentage }}%
           </div>
         </div>
         <!-- Breakdown details for Downpayment and Loan Amount -->
         <div class="breakdown-details">
-          <span class="breakdown-principal">RM {{ downPayment }} Downpayment</span>
-          <span class="breakdown-interest">RM {{ interestAmount }} Loan amount</span>
+          <span class="breakdown-principal">Downpayment</span>
+          <span class="breakdown-interest">RM {{ loanAmount.toLocaleString() }} Loan amount at {{ loanPercentage }}% Loan-to-Value</span>
         </div>
       </div>
     </div>
@@ -58,24 +58,18 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="propertyPrice" type="number" class="input-field" hide-details placeholder="Property Price">
+      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
+        @input="handleInput('price', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
-
-      <v-label class="custom-label">Downpayment</v-label>
-      <v-text-field v-model="downPayment" type="number" class="input-field" hide-details placeholder="Downpayment">
+      <v-label class="custom-label">Loam amount</v-label>
+      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
+        @input="handleInput('loan', $event)">
         <template #prepend-inner>
-          <div class="prepend-class">
-            <span :class="{ active: downPaymentType === '%' }" @click="toggleDownPaymentType('%')">
-              %
-            </span>
-            <span :class="{ active: downPaymentType === 'RM' }" @click="toggleDownPaymentType('RM')">
-              RM
-            </span>
-          </div>
+          <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
@@ -115,54 +109,82 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, computed } from "vue";
+import { formatCurrency } from "@/utils/currencyUtils";
 
 // Define reactive variables
 const propertyPrice = ref('');
-const downPayment = ref('');
-const downPaymentType = ref("RM");
+const loanAmount = ref(0);
 const interestRate = ref('');
 const loanTenure = ref('');
 const monthlyPayment = ref(null);
-const interestPercentage = ref(50);
-const principalPercentage = ref(50);
 
-// Toggle downpayment type between 'RM' and '%'
-const toggleDownPaymentType = (type) => {
-  downPaymentType.value = type;
+const downPayment = ref(0);
+const downpaymentPercentage = ref(0);
+const loanPercentage = ref(0);
+const interestPercentage = ref(0);
+const principalPercentage = ref(0);
+
+const maskedPrice = ref('');
+const maskedLoan = ref('');
+
+// Function to handle input and update both masked and actual value
+const handleInput = (field, event) => {
+  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+
+  if (field === 'price') {
+    propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedPrice.value = formatCurrency(rawValue);
+  } else if (field === 'loan') {
+    loanAmount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedLoan.value = formatCurrency(rawValue);
+  }
 };
 
 // Function to calculate the mortgage
 const calculateMortgage = () => {
-  if (!propertyPrice.value || !interestRate.value || !loanTenure.value) {
+  if (!propertyPrice.value || !interestRate.value || !loanTenure.value || !loanAmount.value) {
     monthlyPayment.value = null;
     alert("Please fill all the fields correctly.");
     return;
   }
 
-  const loanAmount = propertyPrice.value - downPayment.value;
+  const loanAmountActual = loanAmount.value;
   const annualInterestRate = interestRate.value / 100;
   const monthlyInterestRate = annualInterestRate / 12;
   const totalPayments = loanTenure.value * 12;
 
-  if (loanAmount > 0 && monthlyInterestRate > 0 && totalPayments > 0) {
-    const mortgagePayment =
-      (loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments))) /
-      (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
-    monthlyPayment.value = mortgagePayment.toFixed(2);
-
-    // Calculate principal and interest percentages
-    const totalAmount = mortgagePayment * totalPayments;
-    principalPercentage.value = ((loanAmount / totalAmount) * 100).toFixed(2);
-    interestPercentage.value = (100 - principalPercentage.value).toFixed(2);
-  } else {
+  // Validate positive values
+  if (loanAmountActual <= 0 || annualInterestRate < 0 || totalPayments <= 0) {
     monthlyPayment.value = null;
+    alert("Please enter valid positive values.");
+    return;
   }
-};
 
-// Static percentages for downpayment and loan
-const downpaymentPercentage = ref(74);
-const loanPercentage = ref(26);
+  if (monthlyInterestRate === 0) {
+    monthlyPayment.value = (loanAmountActual / totalPayments).toFixed(2);
+    principalPercentage.value = "100.00";
+    interestPercentage.value = "0.00";
+    return;
+  }
+
+  const mortgagePayment =
+    (loanAmountActual * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments))) /
+    (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
+
+  monthlyPayment.value = parseFloat(mortgagePayment.toFixed(2));
+
+  const totalAmountPaid = mortgagePayment * totalPayments;
+
+  const totalInterestPaid = totalAmountPaid - loanAmountActual;
+
+  principalPercentage.value = ((loanAmountActual / totalAmountPaid) * 100).toFixed(0); // Principal paid as a percentage of total payments
+  interestPercentage.value = ((totalInterestPaid / totalAmountPaid) * 100).toFixed(0); // Interest paid as a percentage of total payments
+
+  downPayment.value = propertyPrice.value - loanAmount.value;
+  downpaymentPercentage.value = ((downPayment.value / propertyPrice.value) * 100).toFixed(0);
+  loanPercentage.value = ((loanAmount.value / propertyPrice.value) * 100).toFixed(0);
+};
 
 // Computed properties for interest and principal amounts
 const interestAmount = computed(() => {
@@ -352,6 +374,7 @@ const principalAmount = computed(() => {
 .breakdown-principal {
   position: relative;
   margin-left: 10px;
+  margin-right: 40px;
 }
 
 .breakdown-principal::after {
