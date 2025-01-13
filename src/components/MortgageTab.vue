@@ -144,38 +144,26 @@ const maskedPrice = ref('');
 const maskedDown = ref('');
 
 watch(
-  [
-    () => downPayment.value,
-    () => downPaymentType.value,
-    () => propertyPrice.value,
-    () => interestRate.value,
-  ],
+  [() => downPayment.value, () => downPaymentType.value, () => propertyPrice.value, () => interestRate.value,],
   ([newDownPayment, newDownPaymentType, newPropertyPrice, newInterestRate]) => {
     if (newDownPaymentType === '%') {
-      // Ensure the percentage value is within the valid range
       if (newDownPayment > 100) {
         alert('The down payment percentage cannot exceed 100%. Please enter a valid percentage.');
         downPayment.value = '';
-        maskedDown.value = ''; // Assuming `maskedDown` is used for display purposes
+        maskedDown.value = '';
         return;
       }
 
-      // Automatically calculate the down payment in RM when percentage is entered
       const calculatedDownPayment = (newPropertyPrice * newDownPayment) / 100;
       loanAmount.value = newPropertyPrice - calculatedDownPayment;
-    } else if (newDownPaymentType === 'RM') {
-      // When the down payment is in RM, directly calculate the loan amount
-      loanAmount.value = newPropertyPrice - newDownPayment;
     }
 
-    // Ensure the down payment or loan amount does not go below 0
     if (loanAmount.value < 0) {
       alert('Down payment cannot exceed the property price.');
       loanAmount.value = '';
       downPayment.value = '';
     }
 
-    // Handle Interest Rate Logic
     if (newInterestRate > 100) {
       alert('The interest rate cannot exceed 100%. Please enter a valid interest rate.');
       interestRate.value = '';
