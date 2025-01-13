@@ -16,8 +16,8 @@
 
     <!-- Property price input field -->
     <v-label class="custom-label">Property Price</v-label>
-    <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
-      @input="handleInput('price', $event)">
+    <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details hide-spin-buttons
+      placeholder="Property Price" @input="handleInput('price', $event)">
       <template #prepend-inner>
         <span class="prepend-text">RM</span>
       </template>
@@ -25,8 +25,8 @@
 
     <!-- Loan Amount input field with unit selection (percentage or RM) as design-->
     <v-label class="custom-label">Loan Amount</v-label>
-    <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
-      @input="handleInput('loan', $event)">
+    <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details hide-spin-buttons
+      placeholder="Loan Amount" @input="handleInput('loan', $event)">
       <template #prepend-inner>
         <div class="prepend-class">
           <span :class="{ active: loanAmountActualType === '%' }" @click="toggleLoanAmountType('%')">
@@ -111,7 +111,11 @@ watch(() => loanAmountActual.value, (newLoanAmount) => {
 
 // Function to handle input and update both masked and actual value
 const handleInput = (field, event) => {
-  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+  let rawValue = event.target.value.replace(/[^\d.]/g, '');
+
+  if (rawValue.startsWith('-')) {
+    rawValue = rawValue.slice(1);
+  }
 
   if (field === 'price') {
     propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;

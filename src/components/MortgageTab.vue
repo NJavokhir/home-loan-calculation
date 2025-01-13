@@ -13,10 +13,12 @@
         </div>
         <!-- Progress Bars for Principal and Interest -->
         <div class="progress-container">
-          <div :style="{ width: (principalPercentage === 0 ? 50 : principalPercentage) + '%' }" class="dynamic-left-bar dynamic-bar">
+          <div :style="{ width: (principalPercentage === 0 ? 50 : principalPercentage) + '%' }"
+            class="dynamic-left-bar dynamic-bar">
             {{ principalPercentage }}%
           </div>
-          <div class="dynamic-right-bar dynamic-bar" :style="{ width: (interestPercentage === 0 ? 50 : interestPercentage) + '%' }">
+          <div class="dynamic-right-bar dynamic-bar"
+            :style="{ width: (interestPercentage === 0 ? 50 : interestPercentage) + '%' }">
             {{ interestPercentage }}%
           </div>
         </div>
@@ -39,17 +41,20 @@
         </div>
         <!-- Progress Bars for Downpayment and Loan Amount -->
         <div class="progress-container">
-          <div class="dynamic-left-bar dynamic-bar" :style="{ width: (downpaymentPercentage === 0 ? 50 : downpaymentPercentage) + '%' }">
+          <div class="dynamic-left-bar dynamic-bar"
+            :style="{ width: (downpaymentPercentage === 0 ? 50 : downpaymentPercentage) + '%' }">
             {{ downpaymentPercentage }}%
           </div>
-          <div class="dynamic-right-bar dynamic-bar" :style="{ width: (loanPercentage === 0 ? 50 : loanPercentage) + '%' }">
+          <div class="dynamic-right-bar dynamic-bar"
+            :style="{ width: (loanPercentage === 0 ? 50 : loanPercentage) + '%' }">
             {{ loanPercentage }}%
           </div>
         </div>
         <!-- Breakdown details for Downpayment and Loan Amount -->
         <div class="breakdown-details">
           <span class="breakdown-principal">Downpayment</span>
-          <span class="breakdown-interest">RM {{ loanAmount.toLocaleString() }} Loan amount at {{ loanPercentage }}% Loan-to-Value</span>
+          <span class="breakdown-interest">RM {{ loanAmount.toLocaleString() }} Loan amount at {{ loanPercentage }}%
+            Loan-to-Value</span>
         </div>
       </div>
     </div>
@@ -58,16 +63,16 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
-        @input="handleInput('price', $event)">
+      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details hide-spin-buttons
+        placeholder="Property Price" @input="handleInput('price', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
       <v-label class="custom-label">Loam amount</v-label>
-      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
-        @input="handleInput('loan', $event)">
+      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details hide-spin-buttons
+        placeholder="Loan Amount" @input="handleInput('loan', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
@@ -76,8 +81,8 @@
       <v-row>
         <v-col cols="6">
           <v-label class="custom-label">Interest Rate</v-label>
-          <v-text-field v-model="interestRate" type="number" class="input-field" hide-details
-            placeholder="Interest Rate">
+          <v-text-field v-model="interestRate" type="text" class="input-field" hide-details hide-spin-buttons
+            placeholder="Interest Rate" @input="handleInput('interest', $event)">
             <template #prepend-inner>
               <span class="prepend-text">%</span>
             </template>
@@ -85,7 +90,8 @@
         </v-col>
         <v-col cols="6">
           <v-label class="custom-label">Loan Tenure</v-label>
-          <v-text-field v-model="loanTenure" type="number" class="input-field" hide-details placeholder="Loan">
+          <v-text-field v-model="loanTenure" type="text" class="input-field" hide-details hide-spin-buttons
+            placeholder="Loan Tenure" @input="handleInput('tenure', $event)">
             <template #prepend-inner>
               <span class="prepend-text">Yrs</span>
             </template>
@@ -109,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { formatCurrency } from "@/utils/currencyUtils";
 
 // Define reactive variables
@@ -128,16 +134,32 @@ const principalPercentage = ref(0);
 const maskedPrice = ref('');
 const maskedLoan = ref('');
 
+// Watch for changes in interestRate when interestRate is higher than '100'
+watch(() => interestRate.value, (newInterestRate) => {
+  if (newInterestRate > 100) {
+    alert('The interest rate cannot exceed 100%. Please enter a valid interest rate.');
+    interestRate.value = '';
+  }
+});
+
 // Function to handle input and update both masked and actual value
 const handleInput = (field, event) => {
-  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+  let rawValue = event.target.value.replace(/[^\d.]/g, '');
+
+  if (rawValue.startsWith('-')) {
+    rawValue = rawValue.slice(1);
+  }
 
   if (field === 'price') {
-    propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    propertyPrice.value = parseInt(rawValue, 10) || 0;
     maskedPrice.value = formatCurrency(rawValue);
   } else if (field === 'loan') {
-    loanAmount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    loanAmount.value = parseInt(rawValue, 10) || 0;
     maskedLoan.value = formatCurrency(rawValue);
+  } else if (field === 'interest') {
+    interestRate.value = rawValue;
+  } else if (field === 'tenure') {
+    loanTenure.value = rawValue;
   }
 };
 

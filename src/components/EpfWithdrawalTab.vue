@@ -32,16 +32,16 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
-        @input="handleInput('price', $event)">
+      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details hide-spin-buttons
+        placeholder="Property Price" @input="handleInput('price', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
       <v-label class="custom-label">Loan Amount</v-label>
-      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
-        @input="handleInput('loan', $event)">
+      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details hide-spin-buttons
+        placeholder="Loan Amount" @input="handleInput('loan', $event)">
         <template #prepend-inner>
           <div class="prepend-class">
             <span :class="{ active: loanAmountType === '%' }" @click="toggleDownPaymentType('%')">
@@ -55,7 +55,7 @@
       </v-text-field>
 
       <v-label class="custom-label">Balance in Account II</v-label>
-      <v-text-field v-model="maskedBalance" type="text" class="input-field" hide-details
+      <v-text-field v-model="maskedBalance" type="text" class="input-field" hide-details hide-spin-buttons
         placeholder="Balance in Account II" @input="handleInput('balance', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
@@ -105,8 +105,11 @@ watch(() => loanAmount.value, (newLoanAmount) => {
 
 // Function to handle input and update both masked and actual value
 const handleInput = (field, event) => {
-  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+  let rawValue = event.target.value.replace(/[^\d.]/g, '');
 
+  if (rawValue.startsWith('-')) {
+    rawValue = rawValue.slice(1);
+  }
   if (field === 'price') {
     propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
     maskedPrice.value = formatCurrency(rawValue);
