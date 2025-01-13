@@ -70,9 +70,9 @@
         </template>
       </v-text-field>
 
-      <v-label class="custom-label">Loam amount</v-label>
+      <v-label class="custom-label">Downpayment</v-label>
       <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details hide-spin-buttons
-        placeholder="Loan Amount" @input="handleInput('loan', $event)">
+        placeholder="Downpayment" @input="handleInput('loan', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
