@@ -32,14 +32,16 @@
     <h4 class="font-weight-medium text-left mb-4">Calculator</h4>
     <div class="input-group">
       <v-label class="custom-label">Property Price</v-label>
-      <v-text-field v-model="propertyPrice" type="number" class="input-field" hide-details placeholder="Property Price">
+      <v-text-field v-model="maskedPrice" type="text" class="input-field" hide-details placeholder="Property Price"
+        @input="handleInput('price', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
       </v-text-field>
 
       <v-label class="custom-label">Loan Amount</v-label>
-      <v-text-field v-model="loanAmount" type="number" class="input-field" hide-details placeholder="Loan Amount">
+      <v-text-field v-model="maskedLoan" type="text" class="input-field" hide-details placeholder="Loan Amount"
+        @input="handleInput('loan', $event)">
         <template #prepend-inner>
           <div class="prepend-class">
             <span :class="{ active: loanAmountType === '%' }" @click="toggleDownPaymentType('%')">
@@ -53,8 +55,8 @@
       </v-text-field>
 
       <v-label class="custom-label">Balance in Account II</v-label>
-      <v-text-field v-model="balanceAccount" type="number" class="input-field" hide-details
-        placeholder="Balance in Account II">
+      <v-text-field v-model="maskedBalance" type="text" class="input-field" hide-details
+        placeholder="Balance in Account II" @input="handleInput('balance', $event)">
         <template #prepend-inner>
           <span class="prepend-text">RM</span>
         </template>
@@ -76,20 +78,52 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { formatCurrency } from "@/utils/currencyUtils";
 
 // Defining reactive state variables for user inputs and results
 const propertyPrice = ref('');
 const loanAmount = ref('');
 const balanceAccount = ref('');
+
 const withdrawalPurpose = ref('purchase');
 const fundCanBeWithdrawn = ref(null);
 const loanAmountType = ref('%');
+
+const maskedPrice = ref('');
+const maskedLoan = ref('');
+const maskedBalance = ref('');
+
+// Watch for changes in loanAmount when loanAmountType is '%'
+watch(() => loanAmount.value, (newLoanAmount) => {
+  if (loanAmountType.value === '%' && newLoanAmount > 100) {
+    alert('The loan amount cannot exceed 100%. Please enter a valid loan amount.');
+    loanAmount.value = '';
+    maskedLoan.value = '';
+  }
+});
+
+// Function to handle input and update both masked and actual value
+const handleInput = (field, event) => {
+  const rawValue = event.target.value.replace(/[^\d.-]/g, '');
+
+  if (field === 'price') {
+    propertyPrice.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedPrice.value = formatCurrency(rawValue);
+  } else if (field === 'loan') {
+    loanAmount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedLoan.value = formatCurrency(rawValue);
+  } else if (field === 'balance') {
+    balanceAccount.value = parseInt(rawValue.replace(/[^0-9]/g, ''), 10) || 0;
+    maskedBalance.value = formatCurrency(rawValue);
+  }
+};
 
 // Function to toggle loan amount type (percentage or RM)
 const toggleDownPaymentType = (type) => {
   loanAmountType.value = type;
   loanAmount.value = ''
+  maskedLoan.value = ''
 };
 
 // Function to calculate the maximum fund that can be withdrawn
@@ -101,12 +135,6 @@ const calculateLoanToValue = () => {
   if (price <= 0 || loan <= 0 || balance <= 0) {
     alert('Please fill all the fields with valid values.');
     fundCanBeWithdrawn.value = null;
-    return;
-  }
-
-  if (loanAmountType.value === '%' && loan > 100) {
-    alert('The loan amount cannot exceed 100%. Please enter a valid loan amount.');
-    loan = 0;
     return;
   }
 
